@@ -42,11 +42,10 @@ seen_df2 = seen_df[(seen_df['sample_screen'] == 'random') & (seen_df['relevant']
 seen_df2 = seen_df2[0:15]
 seen_df = seen_df1.append(seen_df2)
 
-unseen_df = pd.read_csv('/home/dveytia/ORO-map-relevance/data/unseen/unique_references2.txt', delimiter='\t')
+unseen_df = pd.read_csv('/home/dveytia/ORO-map-relevance/data/prediction-data/unique_unlabelled_references_VM.csv')
 # unseen_df = pd.read_csv('C:\\Users\\vcm20gly\\OneDrive - Bangor University\\Documents\\Review\\0_unique_unlabelled_references_VM.csv')
 unseen_df.rename(columns={'analysis_id':'id'}, inplace=True)
 unseen_df['seen']=0
-unseen_df = unseen_df[0:30] # add this to subsample df for test run
 
 nan_count=unseen_df['abstract'].isna().sum()
 print('Number of missing abstracts is',nan_count)
@@ -145,12 +144,6 @@ outer_scores = []
 inner_scores = []
 params = ['batch_size','weight_decay','learning_rate','num_epochs','class_weight']
 
-
-
-## ERROR:
-# FileNotFoundError: [Errno 2] No such file or directory: 'model_selection_excl/model_selection_0.csv'
-# I think it needs the output from model_selection_excl.py in order to run
-
 # Reads in results from model selection and chooses the best model
 for k in range(5):
     inner_df = pd.read_csv(f'model_selection_excl/model_selection_{k}.csv')
@@ -183,6 +176,6 @@ for k, (train, test) in enumerate(outer_cv.split(seen_index)):
     
     np.save(f"predictions_excl/y_preds_10fold_{k}.npz",y_preds) # Saves predictions
 
-np.save("/home/dveytia/ORO-map-relevance/outputs/predictions_excl/unseen_ids.npz",df.loc[unseen_index,'id'])
-
+np.save("predictions_excl/unseen_ids.npz",df.loc[unseen_index,'id'])
+# np.save("C:\\Users\\vcm20gly\\OneDrive - Bangor University\\Documents\\Review\\unseen_ids.npz",df.loc[unseen_index,'id'])
 print(t0 - time.time())
