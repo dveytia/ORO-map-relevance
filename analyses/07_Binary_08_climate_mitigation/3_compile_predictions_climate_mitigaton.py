@@ -32,7 +32,7 @@ unseen_df = pd.read_csv(unseenTxt, delimiter='\t')
 unseen_df = unseen_df.rename(columns={'analysis_id':'id'})
 unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 
-pred_df = pd.read_csv(relevanceTxt) #r'03_Binary-AllText-NewApproach/1_document_relevance_v2.csv'
+pred_df = pd.read_csv(relevanceTxt) 
 
 unseen_df = unseen_df.merge(pred_df, how="left")
 unseen_df['seen']=0

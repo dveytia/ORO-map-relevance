@@ -19,6 +19,9 @@ import tensorflow_addons as tfa
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
 import itertools
+import time
+
+t0 = time.time()
 
 ################# Change INPUTS ##################
 binVar = "climate_mitigation" # name of binary variable
@@ -64,68 +67,8 @@ print(df.shape)
 
 #################### Define functions ##################
 
-def KFoldRandom(n_splits, X, no_test, shuffle=False, discard=True):
-    kf = KFold(n_splits=n_splits, shuffle=shuffle)
-    for train, test in kf.split(X):
-        if not discard:
-            train = list(train) +  [x for x in test if x in no_test]
-        test = [x for x in test if x not in no_test]
-        yield (train, test)
-
-tf.config.threading.set_intra_op_parallelism_threads(8)
-tf.config.threading.set_inter_op_parallelism_threads(8)
-
-MODEL_NAME = 'distilbert-base-uncased'
-
-tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
-
-def create_train_val(x,y,train,val):
-    train_encodings = tokenizer(list(x[train].values),
-                                truncation=True,
-                                padding=True)
-    val_encodings = tokenizer(list(x[val].values),
-                                truncation=True,
-                                padding=True) 
-    
-    train_dataset = tf.data.Dataset.from_tensor_slices((
-        dict(train_encodings),
-        list(y[train].values)
-    ))
-    val_dataset = tf.data.Dataset.from_tensor_slices((
-        dict(val_encodings),
-        list(y[val].values)
-    ))
-    
-    
-    MAX_LEN = train_dataset._structure[0]['input_ids'].shape[0]
-    
-    return train_dataset, val_dataset, MAX_LEN
-
-def init_model(MODEL_NAME, num_labels, params):
-    model = TFDistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=num_labels)  
-    optimizer = tfa.optimizers.AdamW(learning_rate=params['learning_rate'], weight_decay=params['weight_decay'])
-
-    loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-    metrics = tf.metrics.BinaryAccuracy()
-    model.compile(
-        optimizer=optimizer,
-        loss=loss,
-        metrics=metrics
-    )
-    return model
-
-def evaluate_preds(y_true, y_pred):
-    try:
-        roc_auc = roc_auc_score(y_true, y_pred)
-    except:
-        roc_auc = np.NaN
-    f1 = f1_score(y_true, y_pred.round())
-    p, r = precision_score(y_true, y_pred.round()), recall_score(y_true, y_pred.round())
-    acc = accuracy_score(y_true, y_pred.round())
-    print(f"ROC AUC: {roc_auc:.0%}, F1: {f1:.1%}, precision: {p:.1%}, recall {r:.1%}, acc {acc:.0%}")
-    return {"ROC AUC": roc_auc, "F1": f1, "precision": p, "recall": r, "accuracy": acc}
-
-
+with open('/home/dveytia/ORO-map-relevance/pyFunctions/binary-label_0_model-selection_functions.py') as f:
+    exec(f.read())
 
 
 
@@ -142,12 +85,6 @@ bert_params = {
 }
 
 
-def product_dict(**kwargs):
-    keys = kwargs.keys()
-    vals = kwargs.values()
-    for instance in itertools.product(*vals):
-        yield dict(zip(keys, instance))
-            
 param_space = list(product_dict(**bert_params))
 
 outer_cv = KFoldRandom(3, df.index, df[df['random_sample']!=1].index, discard=False)
@@ -181,21 +118,23 @@ def train_eval_bert(params, df, train, test):
 ############################### Run model ####################################
 ############ Change file paths where output is stored x3 #####################
 
+
 for k, (train, test) in enumerate(outer_cv):    
     if k!=rank_j:
         continue
     try:
         pr = param_space[0]
-        # change from {rank_j} to {k}
-        cv_results=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv').to_dict('records') 
-        params_tested=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv'[list(pr.keys())].to_dict('records')
+        cv_results=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv').to_dict('records') #File path 1, change name
+        params_tested=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv')[list(pr.keys())].to_dict('records') #File path 2, change name
     except:
         cv_results = []
         params_tested = []
-
     for pr in param_space:
         if pr in params_tested:
             continue
         cv_results.append(train_eval_bert(pr, df=df, train=train, test=test))
-        pd.DataFrame.from_dict(cv_results).to_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv',index=False)
+        pd.DataFrame.from_dict(cv_results).to_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv',index=False) #File path 3, change name
         gc.collect()
+        
+
+                         

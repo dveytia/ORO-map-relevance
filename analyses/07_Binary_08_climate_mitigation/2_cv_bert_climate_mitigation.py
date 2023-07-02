@@ -33,18 +33,26 @@ relevanceTxt = '/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/1_d
 
 ################ Load and format data #######################
 
-df = pd.read_csv(screenDecisionsTx, delimiter='\t')
-df = df.rename(columns={'include_screen':'relevant','analysis_id':'id'})
-df['relevant']=df['relevant'].astype(int)
+df = pd.read_csv(codedVariablesTxt, delimiter='\t')
+df = df.rename(columns={'analysis_id':'id'})
+
+screendf = pd.read_csv(screenDecisionsTxt, delimiter='\t')
+screendf = screendf.query('include_screen==1')
+screendf = screendf.rename(columns={'include_screen':'relevant','analysis_id':'id'})
+
+df = df.merge(screendf[['id', 'sample_screen']], on='id', how='left')
 
 def map_values(x):
-    value_map = {
-        "random": 1,
-        "relevance sort": 0,
-        "test list": 0,
-        "supplemental coding": 0
-    }
-    return value_map.get(x, "NaN")
+    if x == "random":
+        return 1
+    elif x == "relevance sort":
+        return 0
+    elif x == "test list":
+        return 0
+    elif x == "supplemental coding":
+        return 0
+    else:
+        return "NaN"
 
 df['random_sample']=df['sample_screen'].apply(map_values)
 
@@ -54,12 +62,13 @@ df = (df
       .reset_index(drop=True)
 )
 
-print(df.shape)
-
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
 print("The data has been re-formatted")
+print(df.shape)
+
+
 
 # Define functions
 
@@ -126,7 +135,7 @@ def evaluate_preds(y_true, y_pred):
     return {"ROC AUC": roc_auc, "F1": f1, "precision": p, "recall": r, "accuracy": acc}
 
 
-cw = df[(df['random_sample']==1) & (df['relevant']==0)].shape[0] / df[(df['random_sample']==1) & (df['relevant']==1)].shape[0]
+cw = df[(df['random_sample']==1) & (df[binVar]==0)].shape[0] / df[(df['random_sample']==1) & (df[binVar]==1)].shape[0] # 'relevant' -> binVar
 class_weight={0:1, 1:cw}
 
 bert_params = {
@@ -153,7 +162,7 @@ clfs = []
 
 
 def train_eval_bert(params, df, train, test):
-    train_dataset, val_dataset, MAX_LEN = create_train_val(df['text'].astype("str"), df['relevant'], train, test)
+    train_dataset, val_dataset, MAX_LEN = create_train_val(df['text'].astype("str"), df[binVar], train, test) # 'relevant' -> binVar
     
     print("training bert with these params")
     print(params)
@@ -166,7 +175,7 @@ def train_eval_bert(params, df, train, test):
 
     preds = model.predict(val_dataset.batch(1)).logits
     y_pred = tf.keras.activations.sigmoid(tf.convert_to_tensor(preds)).numpy()
-    eps = evaluate_preds(df['relevant'][test], y_pred[:,0])  
+    eps = evaluate_preds(df[binVar][test], y_pred[:,0])  # 'relevant' -> binVar
     for key, value in params.items():
         eps[key] = value
     return eps
@@ -185,8 +194,8 @@ for k, (train, test) in enumerate(outer_cv):
             continue
         try:
             pr = param_space[0]
-            cv_results=pd.read_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv').to_dict('records')
-            params_tested=pd.read_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv')[list(pr.keys())].to_dict('records')
+            cv_results=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/cv_results/{binVar}/{rank_i}_{rank_j}.csv').to_dict('records')
+            params_tested=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/cv_results/{binVar}/{rank_i}_{rank_j}.csv')[list(pr.keys())].to_dict('records')
         except:
             cv_results = []
             params_tested = []
@@ -198,5 +207,5 @@ for k, (train, test) in enumerate(outer_cv):
                 if pr in params_tested:
                     continue
                 cv_results.append(train_eval_bert(pr, df=df, train=l_train, test=l_test))
-                pd.DataFrame.from_dict(cv_results).to_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv',index=False)
+                pd.DataFrame.from_dict(cv_results).to_csv(f'home/dveytia/ORO-map-relevance/outputs/cv_results/{binVar}/{rank_i}_{rank_j}.csv',index=False)
                 gc.collect()
