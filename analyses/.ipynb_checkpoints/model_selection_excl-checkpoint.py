@@ -7,11 +7,10 @@
 #comm = MPI.COMM_WORLD
 #num_procs = comm.Get_size()
 #rank = comm.Get_rank()
+#rank_i = rank%5
 
 # instead run this line:
-rank=0
-
-rank_i = rank%5
+rank_i = 0
 
 
 import gc

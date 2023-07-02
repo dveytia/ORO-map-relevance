@@ -1,31 +1,39 @@
+import sys
+print(sys.version)
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+num_procs = comm.Get_size()
+rank = comm.Get_rank()
 
-# for test run, comment these out
-
-#import sys
-#print(sys.version)
-#from mpi4py import MPI
-#comm = MPI.COMM_WORLD
-#num_procs = comm.Get_size()
-#rank = comm.Get_rank()
-#rank_i = rank%5
-
-# instead run this line:
-rank_i = 0
-
+rank_i = rank//5
+rank_j = rank%5
 
 import gc
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
-from sklearn.metrics import precision_score, recall_score
-import itertools
 from transformers import DistilBertTokenizer, TFDistilBertForSequenceClassification
 import tensorflow as tf
 import tensorflow_addons as tfa
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
+from sklearn.metrics import precision_score, recall_score
+import itertools
+from multiprocessing import Pool
+from functools import partial
 
-df = pd.read_csv('/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt', delimiter='\t')
 
+################# Change INPUTS ##################
+binVar = "climate_mitigation" # name of binary variable
+codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
+screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
+unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
+relevanceTxt = '/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/1_document_relevance_13062023.csv'
+
+
+
+################ Load and format data #######################
+
+df = pd.read_csv(screenDecisionsTx, delimiter='\t')
 df = df.rename(columns={'include_screen':'relevant','analysis_id':'id'})
 df['relevant']=df['relevant'].astype(int)
 
@@ -46,28 +54,22 @@ df = (df
       .reset_index(drop=True)
 )
 
+print(df.shape)
+
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
 print("The data has been re-formatted")
 
-
-# add this in to sub-sample dataframe for test run
-df1 = df[(df['sample_screen'] == 'random') & (df['relevant'] == 1)]
-df1 = df1[0:15]
-df2 = df[(df['sample_screen'] == 'random') & (df['relevant'] == 0)]
-df2 = df2[0:15]
-df = df1.append(df2).reset_index(drop=True)
-
+# Define functions
 
 def KFoldRandom(n_splits, X, no_test, shuffle=False, discard=True):
     kf = KFold(n_splits=n_splits, shuffle=shuffle)
     for train, test in kf.split(X):
-        if not discard: #Discard = True, not value would be false and staement won't run
+        if not discard:
             train = list(train) +  [x for x in test if x in no_test]
         test = [x for x in test if x not in no_test]
         yield (train, test)
-
 
 tf.config.threading.set_intra_op_parallelism_threads(8)
 tf.config.threading.set_inter_op_parallelism_threads(8)
@@ -111,6 +113,7 @@ def init_model(MODEL_NAME, num_labels, params):
     )
     return model
 
+
 def evaluate_preds(y_true, y_pred):
     try:
         roc_auc = roc_auc_score(y_true, y_pred)
@@ -123,7 +126,7 @@ def evaluate_preds(y_true, y_pred):
     return {"ROC AUC": roc_auc, "F1": f1, "precision": p, "recall": r, "accuracy": acc}
 
 
-cw = df[(df['random_sample']==1) & (df['relevant']==0)].shape[0] / df[(df['random_sample']==1) & (df['relevant']==1)].shape[0]  
+cw = df[(df['random_sample']==1) & (df['relevant']==0)].shape[0] / df[(df['random_sample']==1) & (df['relevant']==1)].shape[0]
 class_weight={0:1, 1:cw}
 
 bert_params = {
@@ -142,7 +145,6 @@ def product_dict(**kwargs):
         yield dict(zip(keys, instance))
             
 param_space = list(product_dict(**bert_params))
-len(param_space)
 
 outer_cv = KFoldRandom(5, df.index, df[df['random_sample']!=1].index, discard=False)
 
@@ -171,24 +173,30 @@ def train_eval_bert(params, df, train, test):
 
 parallel=False
 
-
-## ERROR
-# KeyError: '[6, 7, 10, 12, 20, 23, 27, 28] not in index'
+# Run cross validation
 
 for k, (train, test) in enumerate(outer_cv):    
     if k!=rank_i:
         continue
-    try:
-        pr = param_space[0]
-        cv_results=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/model_selection_{rank_i}.csv').to_dict('records')
-        params_tested=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/model_selection_{rank_i}.csv')[list(pr.keys())].to_dict('records')
-    except:
-        cv_results = []
-        params_tested = []
-
-    for pr in param_space:
-        if pr in params_tested:
+    inner_cv = KFoldRandom(5, train, df[df['random_sample']!=1].index, discard=False)
+    inner_scores = []
+    for l, (l_train, l_test) in enumerate(inner_cv):
+        if l!=rank_j:
             continue
-        cv_results.append(train_eval_bert(pr, df=df, train=train, test=test))
-        pd.DataFrame.from_dict(cv_results).to_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/model_selection_{rank_i}.csv',index=False)
-        gc.collect()
+        try:
+            pr = param_space[0]
+            cv_results=pd.read_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv').to_dict('records')
+            params_tested=pd.read_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv')[list(pr.keys())].to_dict('records')
+        except:
+            cv_results = []
+            params_tested = []
+        if parallel:
+            with Pool(5) as p:
+                cv_results = p.map(partial(train_eval_bert, df=df, train=l_train, test=l_test), param_space)
+        else:
+            for pr in param_space:
+                if pr in params_tested:
+                    continue
+                cv_results.append(train_eval_bert(pr, df=df, train=l_train, test=l_test))
+                pd.DataFrame.from_dict(cv_results).to_csv(rf'cv/cv_results_{rank_i}_{rank_j}.csv',index=False)
+                gc.collect()
