@@ -23,7 +23,7 @@ import tensorflow_addons as tfa
 t0 = time.time()
 
 ################# Change INPUTS ##################
-binVar = "climate_mitigation" # name of binary variable to fit
+binVar = "impact_ncp.Any" # name of binary variable to fit
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?

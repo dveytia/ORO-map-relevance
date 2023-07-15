@@ -5,9 +5,10 @@ comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
 rank = comm.Get_rank()
 
+
+rank_j = rank%3
 # FOR TEST RUN
-#rank_j = rank%3
-rank_j = 0
+#rank_j = 0
 
 import gc
 import pandas as pd
@@ -27,6 +28,7 @@ t0 = time.time()
 binVar = "climate_mitigation" # name of binary variable
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
+n_threads = 4 # number of threads to parallelize on
 
 ################# Load data, change file path ################
 df = pd.read_csv(codedVariablesTxt, delimiter='\t')
@@ -65,11 +67,17 @@ print("The data has been re-formatted")
 print(df.shape)
 
 
-#################### Define functions ##################
+#################### Define functions and parameters ##################
 
 with open('/home/dveytia/ORO-map-relevance/pyFunctions/binary-label_0_model-selection_functions.py') as f:
     exec(f.read())
 
+tf.config.threading.set_intra_op_parallelism_threads(n_threads)
+tf.config.threading.set_inter_op_parallelism_threads(n_threads)
+
+MODEL_NAME = 'distilbert-base-uncased'
+
+tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
 
 ############# class weight, change target, e.g. "safe_space #################
@@ -124,8 +132,8 @@ for k, (train, test) in enumerate(outer_cv):
         continue
     try:
         pr = param_space[0]
-        cv_results=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv').to_dict('records') #File path 1, change name
-        params_tested=pd.read_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv')[list(pr.keys())].to_dict('records') #File path 2, change name
+        cv_results=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv').to_dict('records') #File path 1, change name
+        params_tested=pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv')[list(pr.keys())].to_dict('records') #File path 2, change name
     except:
         cv_results = []
         params_tested = []
@@ -133,7 +141,7 @@ for k, (train, test) in enumerate(outer_cv):
         if pr in params_tested:
             continue
         cv_results.append(train_eval_bert(pr, df=df, train=train, test=test))
-        pd.DataFrame.from_dict(cv_results).to_csv(f'home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}model_selection_{k}.csv',index=False) #File path 3, change name
+        pd.DataFrame.from_dict(cv_results).to_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv',index=False) #File path 3, change name
         gc.collect()
         
 

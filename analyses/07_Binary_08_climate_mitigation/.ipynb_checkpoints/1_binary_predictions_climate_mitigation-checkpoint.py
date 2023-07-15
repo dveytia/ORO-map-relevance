@@ -5,9 +5,11 @@ comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
 rank = comm.Get_rank()
 
+
+rank_i = rank
+
 # FOR TEST RUN
-#rank_i = rank
-rank_i = 0
+# rank_i = 0
 
 import pandas as pd
 import numpy as np
@@ -26,7 +28,7 @@ codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
 relevanceTxt = '/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/1_document_relevance_13062023.csv'
-
+n_threads = 2 # number of threads to parallelize on
 
 ################ Load and format data #######################
 
@@ -67,8 +69,15 @@ unseen_index = df[df['seen']==0].index
 print("Dataset has been re-formatted and is ready")
 
 
-############# Define functions ########################
+############# Define parameters and functions ########################
 
+# Set number of threads used for parallelism between independent operations.
+tf.config.threading.set_intra_op_parallelism_threads(n_threads) # intra = number of physical core per socket
+tf.config.threading.set_inter_op_parallelism_threads(n_threads) # inter = number of sockets
+
+MODEL_NAME = 'distilbert-base-uncased'
+
+tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
 with open('/home/dveytia/ORO-map-relevance/pyFunctions/binary-label_1_predictions_functions.py') as f:
     exec(f.read())
@@ -100,7 +109,7 @@ def train_eval_bert(params, df, train, test, evaluate = True):
     else:
         return y_pred
 
-parallel=False
+#parallel=False
 
 outer_scores = []
 inner_scores = []
@@ -144,7 +153,7 @@ for k, (train, test) in enumerate(outer_cv.split(seen_index)):
     
     np.save(f"/home/dveytia/ORO-map-relevance/outputs/predictions/{binVar}_y_preds_5fold_{k}.npz",y_preds) # Saves predictions
 
-np.save(f"/home/dveytia/ORO-map-relevance/outputs/predictions/{binVar}_unseen_ids.npz",df.loc[unseen_index,"id"]) # Saves unseen ids 
+np.save(f"/home/dveytia/ORO-map-relevance/outputs/predictions_data/{binVar}_unseen_ids.npz",df.loc[unseen_index,"id"]) # Saves unseen ids 
 
 print(t0 - time.time())
 

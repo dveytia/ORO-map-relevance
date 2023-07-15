@@ -32,7 +32,7 @@ unseen_df = pd.read_csv(unseenTxt, delimiter='\t')
 unseen_df = unseen_df.rename(columns={'analysis_id':'id'})
 unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 
-pred_df = pd.read_csv(relevanceTxt) #r'03_Binary-AllText-NewApproach/1_document_relevance_v2.csv'
+pred_df = pd.read_csv(relevanceTxt) 
 
 unseen_df = unseen_df.merge(pred_df, how="left")
 unseen_df['seen']=0
@@ -58,7 +58,7 @@ unseen_index = df[df['seen']==0].index
 print("Dataset has been re-formatted and is ready")
 
 ################# using unseen_ids file to compile preds #####################
-unseen_ids= pd.DataFrame(np.load(r'home\dveytia\ORO-map-relevance\outputs\predictions\{binVar}_unseen_ids.npz.npy')) # check this works
+unseen_ids= pd.DataFrame(np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions_data/{binVar}_unseen_ids.npz.npy'))
 unseen_ids.columns=["id"]
 
 k = 5 #Unless you rerun the initial binary predictions you don't need to change this.
@@ -68,14 +68,14 @@ if k==10:
 
     for k in range(10):
         #y_pred = np.load(rf'home\dveytia\ORO-map-relevance\outputs\predictions\{binVar}_y_preds_5fold_{k}.npz.npy')[:,0]#Change file path
-        y_pred = np.load(rf'home\dveytia\ORO-map-relevance\outputs\predictions\{binVar}_y_preds_10fold_{k}.npz.npy')[:,0]# OR this?
+        y_pred = np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions/{binVar}_y_preds_10fold_{k}.npz.npy')[:,0]# OR this?
         y_preds[:,k] = y_pred
         print(np.where(y_pred>0.5,1,0).sum())    
 else:
     y_preds = np.zeros((len(unseen_ids),5))
 
     for k in range(5):
-        y_pred = np.load(rf'home\dveytia\ORO-map-relevance\outputs\predictions\{binVar}_y_preds_5fold_{k}.npz.npy')[:,0]#Change file path
+        y_pred = np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions/{binVar}_y_preds_5fold_{k}.npz.npy')[:,0]#Change file path
         y_preds[:,k] = y_pred
         print(np.where(y_pred>0.5,1,0).sum())
     
@@ -92,7 +92,7 @@ unseen_ids['0 - relevance - upper_pred'] = preds_upper
 
            
 
-unseen_ids.to_csv(r'home\dveytia\ORO-map-relevance\outputs\predictions-compiled\{binVar}_predictions.csv',index=False) # Save file, change path
+unseen_ids.to_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{binVar}_predictions.csv',index=False) # Save file, change path
 
 
 
@@ -130,6 +130,6 @@ ax.set_xlabel('Documents')
 ax.set_ylabel('Predicted relevance')
 
 ax.legend()
-plt.savefig(r'home\dveytia\ORO-map-relevance\figures\{binVar}_predictions_unseen.png',bbox_inches="tight") # Save plot, change file path and name
+plt.savefig(f'/home/dveytia/ORO-map-relevance/figures/{binVar}_predictions_unseen.png',bbox_inches="tight") # Save plot, change file path and name
 
 

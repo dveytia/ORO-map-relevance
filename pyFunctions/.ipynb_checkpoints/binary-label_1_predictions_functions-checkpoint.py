@@ -1,12 +1,6 @@
 ## FUNCTIONS FOR BINARY LABELS PREDICTIONS
 
-tf.config.threading.set_intra_op_parallelism_threads(8)
-tf.config.threading.set_inter_op_parallelism_threads(8)
 
-MODEL_NAME = 'distilbert-base-uncased'
-
-tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
-   
 def create_train_val(x,y,train,val):
     train_encodings = tokenizer(list(x[train].values),
                                 truncation=True,

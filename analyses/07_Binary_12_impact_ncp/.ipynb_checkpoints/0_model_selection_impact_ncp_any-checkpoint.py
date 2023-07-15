@@ -25,7 +25,7 @@ import time
 t0 = time.time()
 
 ################# Change INPUTS ##################
-binVar = "climate_mitigation" # name of binary variable
+binVar = "impact_ncp.Any" # name of binary variable
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 n_threads = 4 # number of threads to parallelize on

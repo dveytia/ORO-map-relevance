@@ -1,15 +1,3 @@
-## FUNCTIONS FOR BINARY LABELS MODEL SELECTION
-
-def KFoldRandom(n_splits, X, no_test, shuffle=False, discard=True):
-    kf = KFold(n_splits=n_splits, shuffle=shuffle)
-    for train, test in kf.split(X):
-        if not discard:
-            train = list(train) +  [x for x in test if x in no_test]
-        test = [x for x in test if x not in no_test]
-        yield (train, test)
-
-
-
 def create_train_val(x,y,train,val):
     train_encodings = tokenizer(list(x[train].values),
                                 truncation=True,
@@ -44,23 +32,31 @@ def init_model(MODEL_NAME, num_labels, params):
         metrics=metrics
     )
     return model
+    
 
-def evaluate_preds(y_true, y_pred):
-    try:
-        roc_auc = roc_auc_score(y_true, y_pred)
-    except:
-        roc_auc = np.NaN
-    f1 = f1_score(y_true, y_pred.round())
-    p, r = precision_score(y_true, y_pred.round()), recall_score(y_true, y_pred.round())
-    acc = accuracy_score(y_true, y_pred.round())
-    print(f"ROC AUC: {roc_auc:.0%}, F1: {f1:.1%}, precision: {p:.1%}, recall {r:.1%}, acc {acc:.0%}")
-    return {"ROC AUC": roc_auc, "F1": f1, "precision": p, "recall": r, "accuracy": acc}
+    
+def train_eval_bert(params, df, train, test, evaluate = True):
+    train_dataset, val_dataset, MAX_LEN = create_train_val(df['text'], df['labels'], train, test)
+    
+    print("training bert with these params")
+    print(params)
+    model = init_model('distilbert-base-uncased', len(targets), params)
+    model.fit(train_dataset.shuffle(100).batch(params['batch_size']),
+              epochs=params['num_epochs'],
+              batch_size=params['batch_size'],
+              class_weight=params['class_weight']
+    )
 
-
-
-def product_dict(**kwargs):
-    keys = kwargs.keys()
-    vals = kwargs.values()
-    for instance in itertools.product(*vals):
-        yield dict(zip(keys, instance))
-
+    preds = model.predict(val_dataset.batch(1)).logits
+    y_pred = tf.keras.activations.sigmoid(tf.convert_to_tensor(preds)).numpy()
+    ai = np.expand_dims(np.argmax(y_pred, axis=1), axis=1)
+    maximums = np.maximum(y_pred.max(1),0.51)
+    np.put_along_axis(y_pred, ai, maximums.reshape(ai.shape), axis=1)
+    
+    if evaluate:
+        eps = evaluate_preds(df['relevant'][test], y_pred[:,0])  
+        for key, value in params.items():
+            eps[key] = value
+        return eps, y_pred
+    else:
+        return y_pred
