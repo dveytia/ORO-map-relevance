@@ -52,7 +52,7 @@ print("Dataset has been re-formatted and is ready")
 unseen_ids= pd.DataFrame(np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions_data/{targetVar}_data_pred_ids.npy')) #Change file path
 unseen_ids.columns=["id"]
 
-targets = [x for x in df.columns if "data_type" in x]
+targets = [x for x in df.columns if targetVar in x]
 
 y_preds = [ np.zeros((len(unseen_ids),5)) for x in range(len(targets))]
 

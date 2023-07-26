@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ################# Change INPUTS ##################
-targetVar = "ecosystem_type" # name of binary variable to fit
+targetVar = "adapt_to_threat" # name of binary variable to fit
+suffix = "simplified"
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
@@ -42,6 +43,11 @@ df['text'] = df['title'].astype("str") + ". " + df['abstract'].astype("str") + "
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
 
+## WHERE adapt_to_threat.Both == 1, assign 1 to Human and Natural ###########################
+df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Human'] = 1
+df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Natural'] = 1
+
+
 seen_index = df[df['seen']==1].index
 unseen_index = df[df['seen']==0].index
 
@@ -49,7 +55,7 @@ print("Dataset has been re-formatted and is ready")
 
 
 ################# using unseen_ids file to compile preds #####################
-unseen_ids= pd.DataFrame(np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions_data/{targetVar}_data_pred_ids.npy')) #Change file path
+unseen_ids= pd.DataFrame(np.load(f'/home/dveytia/ORO-map-relevance/outputs/predictions_data/{targetVar}_{suffix}_data_pred_ids.npy')) #Change file path
 unseen_ids.columns=["id"]
 
 targets = [x for x in df.columns if targetVar in x]
@@ -59,7 +65,7 @@ y_preds = [ np.zeros((len(unseen_ids),5)) for x in range(len(targets))]
 all_cols = ['id']
 
 for k in range(5):
-    y_pred = np.load(f"/home/dveytia/ORO-map-relevance/outputs/predictions/{targetVar}_y_preds_5fold_data_{k}.npz.npy") #Load results, change file path
+    y_pred = np.load(f"/home/dveytia/ORO-map-relevance/outputs/predictions/{targetVar}_{suffix}_y_preds_5fold_data_{k}.npz.npy") #Load results, change file path
     
     for i in range(len(targets)):
         y_preds[i][:,k] = y_pred[:,i]
@@ -82,6 +88,6 @@ for i in range(len(targets)):
     print(unseen_ids.sort_values(f'{t} - mean_prediction',ascending=False).head())
     
 
-unseen_ids.to_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{targetVar}_predictions.csv',index=False) #Saves .csv file, change file path
+unseen_ids.to_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{targetVar}_{suffix}_predictions.csv',index=False) #Saves .csv file, change file path
 
 

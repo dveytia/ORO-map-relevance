@@ -44,7 +44,7 @@ cd ORO-map-relevance
 The execute script command depending on the label (single or multi) and whether it's selection or predictions
 
 ```
-## FOR THE BINARY SCREENER
+## FOR THE BINARY SCREENER (lots of data)
 mpiexec -n 5 python model_selection_excl.py 
 mpiexec -n 10 python binary_predictions_excl.py # for model selection
 

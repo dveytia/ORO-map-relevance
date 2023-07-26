@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ################# Change INPUTS ##################
-targetVar = "ecosystem_type" # name of binary variable to fit
+targetVar = "m_co2_removal" # name of binary variable to fit
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?

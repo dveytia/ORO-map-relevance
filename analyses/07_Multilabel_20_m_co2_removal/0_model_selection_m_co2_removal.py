@@ -1,5 +1,3 @@
-# This script will run the model selection for adapt_to_threat by modifying from it's original labels to just Human or Natural
-
 import sys
 print(sys.version)
 from mpi4py import MPI
@@ -25,10 +23,10 @@ t0 = time.time()
 
 
 ################# Change INPUTS ##################
-targetVar = "adapt_to_threat" # name of variable
+targetVar = "m_co2_removal" # name of variable
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
-n_threads = 8 # number of threads to parallelize on
+n_threads = 2 # number of threads to parallelize on
 
 
 ############################# Load data ###############################
@@ -67,12 +65,6 @@ df = (df
 
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
-
-
-## WHERE adapt_to_threat.Both == 1, assign 1 to Human and Natural ###########################
-df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Human'] = 1
-df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Natural'] = 1
-
 
 print("The data has been re-formatted")
 print(df.shape)
