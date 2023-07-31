@@ -70,7 +70,7 @@ df = (df
 
 
 
-######### NEED TO DECIDE IF I WANT TO CALCULATE THIS | IMPACT_NCP.ANY == 1 #################
+######### PREDICT | CONDITIONAL VARIABLE == 1 #################
 ############################ Choose subset (nested) ##########################
 df = df[df[conditionVar]==1].reset_index(drop=True)
 df = df.drop(columns=[conditionVar]) # drop the conditional variable name otherwise it will be fit along with the other impact_ncp labels
