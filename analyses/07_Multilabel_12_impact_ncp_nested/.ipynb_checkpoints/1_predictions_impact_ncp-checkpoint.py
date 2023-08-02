@@ -87,6 +87,7 @@ with open('/home/dveytia/ORO-map-relevance/pyFunctions/multi-label_1_predictions
 
 ##################### Select targets here ###########################
 targets = [x for x in df.columns if targetVar in x] #Only need to change here, "data_type" for another variable
+# targets = [x for x in targets if not conditionVar in x] # but remove conditional variable -- might need to add
 df['labels'] = list(df[targets].values)
 
 class_weight = {}

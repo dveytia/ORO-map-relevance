@@ -20,10 +20,10 @@ t0 = time.time()
 
 
 ################# Change INPUTS ##################
-targetVar = "impact_ncp" # name of variable
-conditionVar = "impact_ncp.Any" # the variable that has to ==1 in order to predict the target Var
-conditionVarVal = "impact_ncp.Any" # the variable x value that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "oro_development_stage" # name of variable
+suffix = "mitigation"
+conditionVar = 'oro_branch'
+conditionVarVal = 'oro_branch.Mitigation'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
@@ -38,7 +38,7 @@ seen_df = pd.read_csv(codedVariablesTxt, delimiter='\t')
 seen_df = seen_df.rename(columns={'analysis_id':'id'})
 seen_df['seen']=1
 
-# Load unseen documents
+# Load unseen documents and merge
 unseen_df = pd.read_csv(unseenTxt, delimiter='\t') 
 unseen_df = unseen_df.rename(columns={'analysis_id':'id'})
 unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
@@ -46,7 +46,6 @@ unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 # Load prediction relevance
 pred_df = pd.read_csv(relevanceTxt) 
 cond_df = pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{conditionVar}_predictions.csv')
-cond_df.rename(columns=lambda s: s.replace("0 - relevance", conditionVarVal), inplace=True)
 
 # Merge all unseen dataframes with their predictions
 unseen_df = unseen_df.merge(pred_df, how="left")
@@ -56,7 +55,6 @@ unseen_df['seen']=0
 # Choose which predictiction boundaries to apply
 unseen_df = unseen_df[unseen_df['0 - relevance - upper_pred']>=0.5] # has to first be relevant
 unseen_df = unseen_df[unseen_df[(conditionVarVal + ' - upper_pred')]>=0.5] # has to then be relevant for conditional variable
-
 
 # Concatenate seen and unseen
 df = (pd.concat([seen_df,unseen_df])
@@ -87,7 +85,6 @@ with open('/home/dveytia/ORO-map-relevance/pyFunctions/multi-label_1_predictions
 
 ##################### Select targets here ###########################
 targets = [x for x in df.columns if targetVar in x] #Only need to change here, "data_type" for another variable
-# targets = [x for x in targets if not conditionVar in x] # but remove conditional variable -- might need to add
 df['labels'] = list(df[targets].values)
 
 class_weight = {}

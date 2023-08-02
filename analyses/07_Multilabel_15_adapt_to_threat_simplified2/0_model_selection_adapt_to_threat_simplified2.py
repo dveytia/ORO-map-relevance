@@ -1,3 +1,5 @@
+# This script will run the model selection for adapt_to_threat by modifying from it's original labels to just Human or Natural
+
 import sys
 print(sys.version)
 from mpi4py import MPI
@@ -22,12 +24,9 @@ import time
 t0 = time.time()
 
 
-
-
 ################# Change INPUTS ##################
-targetVar = "method_type" # name of variable
-conditionVar = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "adapt_to_threat" # name of variable
+suffix = "simplified2" # the suffix to add to this run of the variable 
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 n_threads = 2 # number of threads to parallelize on
@@ -67,29 +66,17 @@ df = (df
       .reset_index(drop=True)
 )
 
-
-
-######### PREDICT | CONDITIONAL VARIABLE == 1 #################
-############################ Choose subset (nested) ##########################
-df = df[df[conditionVar]==1].reset_index(drop=True)
-df = df.drop(columns=[conditionVar]) # drop the conditional variable name otherwise it will be fit along with the other impact_ncp labels
-
-df = (df
-      #.query('unlabelled==0')
-      # .query('relevant==1')
-      .sort_values('id')
-      .sample(frac=1, random_state=1)
-      .reset_index(drop=True)
-)
-
-
-
-
-
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
+
+## WHERE adapt_to_threat.Both == 1, assign 1 to Human and Natural ###########################
+df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Human'] = 1
+df.loc[df['adapt_to_threat.Both'] == 1, 'adapt_to_threat.Natural'] = 1
+df = df.drop(columns=['adapt_to_threat.Both']) # drop the Both column
+
 print("The data has been re-formatted")
+
 print(df.shape)
 
 ######################### Define functions #############################

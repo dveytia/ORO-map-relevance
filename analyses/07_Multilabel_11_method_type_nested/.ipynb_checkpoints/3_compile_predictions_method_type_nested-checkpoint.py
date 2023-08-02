@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 ################# Change INPUTS ##################
 targetVar = "method_type" # name of variable
-conditionVar = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
+conditionVar = "data"
+conditionVarVal = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
 suffix = "nested" # the suffix to add to this run of the variable 
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
@@ -36,7 +37,7 @@ unseen_df['seen']=0
 
 # Choose which predictiction boundaries to apply
 unseen_df = unseen_df[unseen_df['0 - relevance - upper_pred']>=0.5] # has to first be relevant
-unseen_df = unseen_df[unseen_df[(conditionVar + ' - upper_pred')]>=0.5] # has to then be relevant for conditional variable
+unseen_df = unseen_df[unseen_df[(conditionVarVal + ' - upper_pred')]>=0.5] # has to then be relevant for conditional variable
 
 
 # Concatenate seen and unseen

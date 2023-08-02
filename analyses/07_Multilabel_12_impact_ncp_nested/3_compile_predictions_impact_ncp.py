@@ -27,6 +27,7 @@ unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 # Load prediction relevance
 pred_df = pd.read_csv(relevanceTxt) 
 cond_df = pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{conditionVar}_predictions.csv')
+cond_df.rename(columns=lambda s: s.replace("0 - relevance", conditionVar), inplace=True)
 
 # Merge all unseen dataframes with their predictions
 unseen_df = unseen_df.merge(pred_df, how="left")
@@ -61,6 +62,7 @@ unseen_ids= pd.DataFrame(np.load(f'/home/dveytia/ORO-map-relevance/outputs/predi
 unseen_ids.columns=["id"]
 
 targets = [x for x in df.columns if targetVar in x]
+targets = [x for x in targets if not conditionVar in x] # but remove conditional variable from predictions
 
 y_preds = [ np.zeros((len(unseen_ids),5)) for x in range(len(targets))]
 

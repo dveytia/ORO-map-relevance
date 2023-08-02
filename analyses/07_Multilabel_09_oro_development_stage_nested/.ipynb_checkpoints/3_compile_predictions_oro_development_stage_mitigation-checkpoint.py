@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ################# Change INPUTS ##################
-targetVar = "method_type" # name of variable
-conditionVar = "data"
-conditionVarVal = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "oro_development_stage" # name of binary variable to fit
+suffix = "mitigation"
+conditionVar = 'oro_branch'
+conditionVarVal = 'oro_branch.Mitigation'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
@@ -20,7 +20,7 @@ seen_df = pd.read_csv(codedVariablesTxt, delimiter='\t')
 seen_df = seen_df.rename(columns={'analysis_id':'id'})
 seen_df['seen']=1
 
-# Load unseen documents 
+# Load unseen documents and merge
 unseen_df = pd.read_csv(unseenTxt, delimiter='\t')
 unseen_df = unseen_df.rename(columns={'analysis_id':'id'})
 unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)

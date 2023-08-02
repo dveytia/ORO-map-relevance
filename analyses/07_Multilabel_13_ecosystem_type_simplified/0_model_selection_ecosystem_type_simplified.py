@@ -22,12 +22,9 @@ import time
 t0 = time.time()
 
 
-
-
 ################# Change INPUTS ##################
-targetVar = "method_type" # name of variable
-conditionVar = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "ecosystem_type" # name of variable
+suffix = 'simplified'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 n_threads = 2 # number of threads to parallelize on
@@ -67,27 +64,13 @@ df = (df
       .reset_index(drop=True)
 )
 
-
-
-######### PREDICT | CONDITIONAL VARIABLE == 1 #################
-############################ Choose subset (nested) ##########################
-df = df[df[conditionVar]==1].reset_index(drop=True)
-df = df.drop(columns=[conditionVar]) # drop the conditional variable name otherwise it will be fit along with the other impact_ncp labels
-
-df = (df
-      #.query('unlabelled==0')
-      # .query('relevant==1')
-      .sort_values('id')
-      .sample(frac=1, random_state=1)
-      .reset_index(drop=True)
-)
-
-
-
-
-
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
+
+
+####################### Drop columns of labels that do not perform well #######################
+df = df.drop(columns=['ecosystem_type.Salt_marsh', 'ecosystem_type.Macroalgae', 'ecosystem_type.Other'])
+
 
 print("The data has been re-formatted")
 print(df.shape)
@@ -107,6 +90,8 @@ tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
 ###################### Select targets here #################################
 targets = [x for x in df.columns if targetVar in x] 
+print(targets)
+
 df['labels'] = list(df[targets].values)
 
 class_weight = {}

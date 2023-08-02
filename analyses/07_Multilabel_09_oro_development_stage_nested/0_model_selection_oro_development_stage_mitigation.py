@@ -22,16 +22,14 @@ import time
 t0 = time.time()
 
 
-
-
 ################# Change INPUTS ##################
-targetVar = "method_type" # name of variable
-conditionVar = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "oro_development_stage" # name of variable
+suffix = "mitigation"
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 n_threads = 2 # number of threads to parallelize on
-
+conditionVar = 'oro_branch'
+conditionVarVal = 'oro_branch.Mitigation'
 
 ############################# Load data ###############################
 ######################## Change file paths x2 #########################
@@ -59,20 +57,10 @@ def map_values(x):
 
 df['random_sample']=df['sample_screen'].apply(map_values)
 
-df = (df
-      #.query('unlabelled==0')
-      # .query('relevant==1')
-      .sort_values('id')
-      .sample(frac=1, random_state=1)
-      .reset_index(drop=True)
-)
-
-
-
 ######### PREDICT | CONDITIONAL VARIABLE == 1 #################
 ############################ Choose subset (nested) ##########################
-df = df[df[conditionVar]==1].reset_index(drop=True)
-df = df.drop(columns=[conditionVar]) # drop the conditional variable name otherwise it will be fit along with the other impact_ncp labels
+df = df[df[conditionVarVal]==1].reset_index(drop=True)
+ 
 
 df = (df
       #.query('unlabelled==0')
@@ -81,10 +69,6 @@ df = (df
       .sample(frac=1, random_state=1)
       .reset_index(drop=True)
 )
-
-
-
-
 
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
@@ -107,6 +91,9 @@ tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
 ###################### Select targets here #################################
 targets = [x for x in df.columns if targetVar in x] 
+
+print("currently fitting", targets)
+
 df['labels'] = list(df[targets].values)
 
 class_weight = {}

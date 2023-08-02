@@ -3,10 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ################# Change INPUTS ##################
-targetVar = "method_type" # name of variable
-conditionVar = "data"
-conditionVarVal = "data_type.Primary" # the variable that has to ==1 in order to predict the target Var
-suffix = "nested" # the suffix to add to this run of the variable 
+targetVar = "ecosystem_type" # name of variable
+suffix = 'simplified'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
@@ -20,24 +18,18 @@ seen_df = pd.read_csv(codedVariablesTxt, delimiter='\t')
 seen_df = seen_df.rename(columns={'analysis_id':'id'})
 seen_df['seen']=1
 
-# Load unseen documents 
+# Load unseen documents and merge
 unseen_df = pd.read_csv(unseenTxt, delimiter='\t')
 unseen_df = unseen_df.rename(columns={'analysis_id':'id'})
 unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 
-# Load prediction relevance
-pred_df = pd.read_csv(relevanceTxt) 
-cond_df = pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{conditionVar}_predictions.csv')
+pred_df = pd.read_csv(relevanceTxt)
 
-# Merge all unseen dataframes with their predictions
 unseen_df = unseen_df.merge(pred_df, how="left")
-unseen_df = unseen_df.merge(cond_df, how="left")
 unseen_df['seen']=0
 
-
 # Choose which predictiction boundaries to apply
-unseen_df = unseen_df[unseen_df['0 - relevance - upper_pred']>=0.5] # has to first be relevant
-unseen_df = unseen_df[unseen_df[(conditionVarVal + ' - upper_pred')]>=0.5] # has to then be relevant for conditional variable
+unseen_df = unseen_df[unseen_df['0 - relevance - upper_pred']>=0.5]
 
 
 # Concatenate seen and unseen
@@ -49,6 +41,9 @@ df = (pd.concat([seen_df,unseen_df])
 
 df['text'] = df['title'].astype("str") + ". " + df['abstract'].astype("str") + " " + "Keywords: " + df["keywords"].astype("str")
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
+
+####################### Drop columns of labels that do not perform well #######################
+df = df.drop(columns=['ecosystem_type.Salt_marsh', 'ecosystem_type.Macroalgae', 'ecosystem_type.Other'])
 
 
 seen_index = df[df['seen']==1].index
