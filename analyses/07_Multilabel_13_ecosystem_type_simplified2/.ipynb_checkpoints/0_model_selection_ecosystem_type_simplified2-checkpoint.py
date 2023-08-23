@@ -18,6 +18,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
 import itertools
 import time
+#import logging
 
 t0 = time.time()
 
@@ -27,7 +28,14 @@ targetVar = "ecosystem_type" # name of variable
 suffix = 'simplified2'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
-n_threads = 2 # number of threads to parallelize on
+n_threads = 1 # number of threads to parallelize on
+
+
+
+################# Log output/warnings ####################
+
+#logging.basicConfig(filename="model_selection_log.txt",level=logging.DEBUG)
+#logging.captureWarnings(True)
 
 
 ############################# Load data ###############################
@@ -79,6 +87,7 @@ print(df.shape)
 
 tf.config.threading.set_intra_op_parallelism_threads(n_threads)
 tf.config.threading.set_inter_op_parallelism_threads(n_threads)
+#tf.config.gpu.set_per_process_memory_fraction(0.4)
 
 with open('/home/dveytia/ORO-map-relevance/pyFunctions/multi-label_0_model-selection_functions.py') as f:
     exec(f.read())
