@@ -1,6 +1,6 @@
 import sys
 print(sys.version)
-import mpi4py
+#import mpi4py
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
@@ -19,7 +19,6 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
 import itertools
 import time
-#import logging
 
 t0 = time.time()
 
@@ -29,12 +28,12 @@ targetVar = "ecosystem_type" # name of variable
 suffix = 'simplified2'
 codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
-n_threads = 1 # number of threads to parallelize on
+n_threads = 2 # number of threads to parallelize on
 
 
 
 ################# Log output/warnings ####################
-
+#import logging
 #logging.basicConfig(filename="model_selection_log.txt",level=logging.DEBUG)
 #logging.captureWarnings(True)
 
@@ -89,6 +88,12 @@ print(df.shape)
 tf.config.threading.set_intra_op_parallelism_threads(n_threads)
 tf.config.threading.set_inter_op_parallelism_threads(n_threads)
 #tf.config.gpu.set_per_process_memory_fraction(0.4)
+
+# These two lines may fix the memory problem that produces the error when running with mpiexec: mpiexec tensorflow error compiler cuda_error_out_of_memory: out of memory
+# https://github.com/tensorflow/tensorflow/issues/40760
+# But it says that now I use all the threads and only 2 processes running instead of 3
+#gpus = tf.config.experimental.list_physical_devices('GPU')
+#tf.config.experimental.set_memory_growth(gpus[0], True)
 
 with open('/home/dveytia/ORO-map-relevance/pyFunctions/multi-label_0_model-selection_functions.py') as f:
     exec(f.read())

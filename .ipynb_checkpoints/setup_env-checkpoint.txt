@@ -1,0 +1,5 @@
+conda create --name distilbert
+conda activate distilbert
+pip install  transformers tensorflow tensorflow_addons 
+pip install pandas numpy sklearn scikit-learn matplotlib 
+conda install -c conda-forge mpi4py
