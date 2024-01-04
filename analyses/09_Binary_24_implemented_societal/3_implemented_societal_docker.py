@@ -63,7 +63,7 @@ print("Dataset has been re-formatted and is ready")
 
 
 ################# using unseen_ids file to compile preds #####################
-unseen_ids= pd.DataFrame(np.load(f"{dockerFilePath}outputs-docker/predictions_data/{binVar}_unseen_ids.npz")) #Change file path
+unseen_ids= pd.DataFrame(np.load(f"{dockerFilePath}outputs-docker/predictions_data/{binVar}_unseen_ids.npz.npy")) #Change file path
 unseen_ids.columns=["id"]
 
 k = 5 #Unless you rerun the initial binary predictions you don't need to change this.

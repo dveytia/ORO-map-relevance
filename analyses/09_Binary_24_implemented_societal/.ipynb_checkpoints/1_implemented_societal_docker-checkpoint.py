@@ -5,7 +5,7 @@ comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
 rank = comm.Get_rank()
 
-rank_i = rank%5
+rank_i = rank%5 #rank_i = rank
 
 import pandas as pd
 import numpy as np
@@ -18,6 +18,8 @@ import tensorflow_addons as tfa
 
 
 ################# Change INPUTS ##################
+n_threads = 5 # number of threads to parallelize on
+
 binVar = "societal_implemented" # name of binary variable
 binVarFull = "oro_development_stage.Implemented_continued_assessment"
 dockerFilePath = '/home/devi/analysis/'
@@ -28,7 +30,7 @@ codedVariablesTxt = dockerFilePath + 'data/seen/all-coding-format-distilBERT-sim
 screenDecisionsTxt = dockerFilePath + 'data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = dockerFilePath + 'data/unseen/0_unique_references.txt' # change to unique_references2.txt?
 relevanceTxt = dockerFilePath + 'outputs/predictions-compiled/1_document_relevance_13062023.csv'
-n_threads = 2 # number of threads to parallelize on
+
 
 
 ############################# Load data ###############################
@@ -37,6 +39,10 @@ n_threads = 2 # number of threads to parallelize on
 seen_df = pd.read_csv(codedVariablesTxt, delimiter='\t') 
 seen_df = seen_df.rename(columns={'analysis_id':'id'})
 seen_df['seen']=1
+seen_df = seen_df[seen_df[conditionVarVal]==1].reset_index(drop=True) ### Needed to add this line otherwise it was throwing error
+seen_df = seen_df[['id', 'title','abstract', 'keywords','seen',binVarFull]]
+seen_df.shape
+# should be 323 rows in seen
 
 # Load unseen documents and merge
 unseen_df = pd.read_csv(unseenTxt, delimiter='\t') 
@@ -45,16 +51,18 @@ unseen_df=unseen_df.dropna(subset=['abstract']).reset_index(drop=True)
 
 # Load prediction relevance
 pred_df = pd.read_csv(relevanceTxt) 
-cond_df = pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/{conditionVar}_predictions.csv')
+cond_df = pd.read_csv(f'{dockerFilePath}outputs/predictions-compiled/{conditionVar}_predictions.csv')
 
 # Merge all unseen dataframes with their predictions
 unseen_df = unseen_df.merge(pred_df, how="left")
-unseen_df = unseen_df.merge(cond_df, how="left")
+unseen_df = unseen_df.merge(cond_df, how="right") # right join instead of left prevents NA values
 unseen_df['seen']=0
 
 # Choose which predictiction boundaries to apply
 unseen_df = unseen_df[unseen_df['0 - relevance - upper_pred']>=0.5] # has to first be relevant
 unseen_df = unseen_df[unseen_df[(conditionVarVal + ' - upper_pred')]>=0.5] # has to then be relevant for conditional variable
+unseen_df = unseen_df[['id', 'title','abstract', 'keywords','seen']]
+
 
 # Concatenate seen and unseen
 df = (pd.concat([seen_df,unseen_df])
@@ -158,4 +166,3 @@ for k, (train, test) in enumerate(outer_cv.split(seen_index)):
     np.save(f"{dockerFilePath}outputs-docker/predictions/{binVar}_y_preds_5fold_{k}.npz",y_preds) # Saves predictions
 
 np.save(f"{dockerFilePath}outputs-docker/predictions_data/{binVar}_unseen_ids.npz",df.loc[unseen_index,"id"]) # Saves unseen ids 
-

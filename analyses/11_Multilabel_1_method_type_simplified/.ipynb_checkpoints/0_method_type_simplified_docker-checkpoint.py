@@ -5,6 +5,7 @@ comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
 rank = comm.Get_rank()
 
+
 rank_j = rank%3
 
 import gc
@@ -17,26 +18,27 @@ import tensorflow_addons as tfa
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
 import itertools
-import time
-
-t0 = time.time()
 
 
 ################# Change INPUTS ##################
-binVar = "societal_implemented" # name of binary variable
-binVarFull = "oro_development_stage.Implemented_continued_assessment"
+n_threads = 8 # number of threads to parallelize on
 dockerFilePath = '/home/devi/analysis/'
+
+targetVar = "method_type" # name of variable 
+suffix = "simplified" # the suffix to add to this run of the variable 
+conditionVar = ["data_type.Primary"] # the variable(s) that has to ==1 in order to predict the target Var
+dropLabels = ['method_type.Expert_opinion', 'method_type.Method_or_technology_development']
+mergeLabels= ['method_type.Experimental_exsitu', 'method_type.Experimental_insitu', 'method_type.Observational'] # list of labels to merge
+newLabel = 'method_type.Empirical' # name of new label that encompasses the merged labels
 
 codedVariablesTxt = dockerFilePath + 'data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = dockerFilePath + 'data/seen/all-screen-results_screenExcl-codeIncl.txt'
-n_threads = 3 # number of threads to parallelize on
-conditionVar = 'oro_branch'
-conditionVarVal = 'oro_branch.Societal'
+
+
 
 ############################# Load data ###############################
 ######################## Change file paths x2 #########################
 df = pd.read_csv(codedVariablesTxt, delimiter='\t') #File path 1
-
 df = df.rename(columns={'analysis_id':'id'})
 
 screendf = pd.read_csv(screenDecisionsTxt, delimiter='\t') #File path 2
@@ -60,6 +62,8 @@ def map_values(x):
 df['random_sample']=df['sample_screen'].apply(map_values)
 
 df = (df
+      #.query('unlabelled==0')
+      # .query('relevant==1')
       .sort_values('id')
       .sample(frac=1, random_state=1)
       .reset_index(drop=True)
@@ -68,33 +72,46 @@ df = (df
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
+print("The data has been re-formatted")
+print(df.shape)
+
 
 ######### PREDICT | CONDITIONAL VARIABLE == 1 #################
 ############################ Choose subset (nested) ##########################
-df = df[df[conditionVarVal]==1].reset_index(drop=True)
+df = df[df[conditionVar].sum(axis=1) == len(conditionVar)] # keep rows where all conditional variables = 1
+df = df.drop(columns=conditionVar) # drop the conditional variable name otherwise it will be fit along with the other impact_ncp labels
 
-#################### Rename target column #################################
-df = df.rename(columns={binVarFull: binVar})
+df = (df
+      #.query('unlabelled==0')
+      # .query('relevant==1')
+      .sort_values('id')
+      .sample(frac=1, random_state=1)
+      .reset_index(drop=True)
+)
 
 
-#df = (df
-#      .sort_values('id')
-#      .sample(frac=1, random_state=1)
-#      .reset_index(drop=True)
-#)
 
-#df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
-#df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
+
+################# Merge variables to simplify labels of predicted variable ###############
+# Merge into one column
+df[newLabel] = df[mergeLabels].sum(axis = 'columns') # get the sum across all the columns to merge
+df[newLabel].where(df[newLabel] <= 1, 1) # cap value at 1
+
+# Remove old columns
+df = df.drop(columns=mergeLabels)
+df = df.drop(columns = dropLabels)
 
 print("The data has been re-formatted")
 print(df.shape)
+
+
 
 ######################### Define functions #############################
 
 tf.config.threading.set_intra_op_parallelism_threads(n_threads)
 tf.config.threading.set_inter_op_parallelism_threads(n_threads)
 
-with open(dockerFilePath + 'pyFunctions/binary-label_0_model-selection_functions.py') as f:
+with open(dockerFilePath + 'pyFunctions/multi-label_0_model-selection_functions.py') as f:
     exec(f.read())
 
 MODEL_NAME = 'distilbert-base-uncased'
@@ -102,10 +119,17 @@ MODEL_NAME = 'distilbert-base-uncased'
 tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
 
-###################### Select targets here #################################
-cw = df[(df['random_sample']==1) & (df[binVar]==0)].shape[0] / df[(df['random_sample']==1) & (df[binVar]==1)].shape[0]
-class_weight={0:1, 1:cw}
 
+###################### Select targets here #################################
+targets = [x for x in df.columns if targetVar in x] 
+df['labels'] = list(df[targets].values)
+
+class_weight = {}
+for i, t in enumerate(targets):
+    cw = df[(df['random_sample']==1) & (df[t]==0)].shape[0] / df[(df['random_sample']==1) & (df[t]==1)].shape[0]
+    class_weight[i] = cw
+    
+class_weight
 
 bert_params = {
   "class_weight": [None,class_weight],
@@ -123,38 +147,17 @@ outer_cv = KFoldRandom(3, df.index, df[df['random_sample']!=1].index, discard=Fa
 outer_scores = []
 clfs = []
 
-############## change target label ###############
-def train_eval_bert(params, df, train, test):
-    train_dataset, val_dataset, MAX_LEN = create_train_val(df['text'].astype("str"), df[binVar], train, test)
-    
-    print("training bert with these params")
-    print(params)
-    model = init_model('distilbert-base-uncased', 1, params)
-    model.fit(train_dataset.shuffle(100).batch(params['batch_size']),
-              epochs=params['num_epochs'],
-              batch_size=params['batch_size'],
-              class_weight=params['class_weight']
-    )
-
-    preds = model.predict(val_dataset.batch(1)).logits
-    y_pred = tf.keras.activations.sigmoid(tf.convert_to_tensor(preds)).numpy()
-    eps = evaluate_preds(df[binVar][test], y_pred[:,0])
-    print(eps)
-    for key, value in params.items():
-        eps[key] = value
-    return eps
-
-
 
 ############################## Run models ################################
 ######################## Change file path (x3) ###########################
+
 for k, (train, test) in enumerate(outer_cv):    
     if k!=rank_j:
         continue
     try:
         pr = param_space[0]
-        cv_results=pd.read_csv(f'{dockerFilePath}outputs-docker/model_selection/{binVar}_model_selection_{k}.csv').to_dict('records') #File path 1, change name
-        params_tested=pd.read_csv(f'{dockerFilePath}outputs-docker/model_selection/{binVar}_model_selection_{k}.csv')[list(pr.keys())].to_dict('records') #File path 2, change name
+        cv_results=pd.read_csv(f'{dockerFilePath}outputs-docker/model_selection/{targetVar}_{suffix}_model_selection_{k}.csv').to_dict('records') #File path 1, change name
+        params_tested=pd.read_csv(f'{dockerFilePath}outputs-docker/model_selection/{targetVar}_{suffix}_model_selection_{k}.csv')[list(pr.keys())].to_dict('records') #File path 2, change name
     except:
         cv_results = []
         params_tested = []
@@ -162,5 +165,9 @@ for k, (train, test) in enumerate(outer_cv):
         if pr in params_tested:
             continue
         cv_results.append(train_eval_bert(pr, df=df, train=train, test=test))
-        pd.DataFrame.from_dict(cv_results).to_csv(f'{dockerFilePath}outputs-docker/model_selection/{binVar}_model_selection_{k}.csv',index=False) #File path 3, change name
+        pd.DataFrame.from_dict(cv_results).to_csv(f'{dockerFilePath}outputs-docker/model_selection/{targetVar}_{suffix}_model_selection_{k}.csv',index=False) #File path 3, change name
         gc.collect()
+        
+   
+
+                         

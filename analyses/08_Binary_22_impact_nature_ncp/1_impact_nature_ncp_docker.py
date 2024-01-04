@@ -23,12 +23,16 @@ import tensorflow_addons as tfa
 t0 = time.time()
 
 ################# Change INPUTS ##################
+n_threads = 5 # number of threads to parallelize on
+
 binVar = "impact_nature_ncp" # name of binary variable
-codedVariablesTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
-screenDecisionsTxt = '/home/dveytia/ORO-map-relevance/data/seen/all-screen-results_screenExcl-codeIncl.txt'
-unseenTxt = '/home/dveytia/ORO-map-relevance/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
-relevanceTxt = '/home/dveytia/ORO-map-relevance/outputs/predictions-compiled/1_document_relevance_13062023.csv'
-n_threads = 2 # number of threads to parallelize on
+
+dockerFilePath = '/home/devi/analysis/'
+
+codedVariablesTxt = dockerFilePath + 'data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
+screenDecisionsTxt = dockerFilePath + 'data/seen/all-screen-results_screenExcl-codeIncl.txt'
+unseenTxt = dockerFilePath + 'data/unseen/0_unique_references.txt' # change to unique_references2.txt?
+relevanceTxt = dockerFilePath + 'outputs/predictions-compiled/1_document_relevance_13062023.csv'
 
 ################ Load and format data #######################
 
@@ -79,7 +83,7 @@ MODEL_NAME = 'distilbert-base-uncased'
 
 tokenizer = DistilBertTokenizer.from_pretrained(MODEL_NAME)
 
-with open('/home/dveytia/ORO-map-relevance/pyFunctions/binary-label_1_predictions_functions.py') as f:
+with open(dockerFilePath + 'pyFunctions/binary-label_1_predictions_functions.py') as f:
     exec(f.read())
 
 outer_scores = []
@@ -119,7 +123,7 @@ params = ['batch_size','weight_decay','learning_rate','num_epochs','class_weight
 ###### Reads in results from model selection and chooses the best model ######
 ############## Change path to point to model_selection output ################
 for k in range(3):
-    inner_df = pd.read_csv(f'/home/dveytia/ORO-map-relevance/outputs/model_selection/{binVar}_model_selection_{k}.csv')
+    inner_df = pd.read_csv(f'{dockerFilePath}outputs-docker/model_selection/{binVar}_model_selection_{k}.csv')
     inner_df = inner_df.sort_values('F1',ascending=False).reset_index(drop=True)
     inner_scores += inner_df.to_dict('records')
 
@@ -151,9 +155,9 @@ for k, (train, test) in enumerate(outer_cv.split(seen_index)):
 
     y_preds = train_eval_bert(best_model, df=df, train=train, test=test, evaluate=False)
     
-    np.save(f"/home/dveytia/ORO-map-relevance/outputs/predictions/{binVar}_y_preds_5fold_{k}.npz",y_preds) # Saves predictions
+    np.save(f"{dockerFilePath}outputs-docker/predictions/{binVar}_y_preds_5fold_{k}.npz",y_preds) # Saves predictions
 
-np.save(f"/home/dveytia/ORO-map-relevance/outputs/predictions_data/{binVar}_unseen_ids.npz",df.loc[unseen_index,"id"]) # Saves unseen ids 
+np.save(f"{dockerFilePath}outputs-docker/predictions_data/{binVar}_unseen_ids.npz",df.loc[unseen_index,"id"]) # Saves unseen ids 
 
 print(t0 - time.time())
 

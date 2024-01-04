@@ -13,14 +13,14 @@ from sklearn.model_selection import KFold
 import ast
 from transformers import DistilBertTokenizer, TFDistilBertForSequenceClassification
 import tensorflow as tf
-tf.config.threading.set_intra_op_parallelism_threads(4)
-tf.config.threading.set_inter_op_parallelism_threads(4)
 import tensorflow_addons as tfa
 
 
 
 
 ################# Change INPUTS ##################
+n_threads = 5
+
 targetVar = "climate_threat" # name of variable
 suffix = 'simplified'
 dockerFilePath = '/home/devi/analysis/'
@@ -64,7 +64,7 @@ df['text'] = df['title'].astype("str") + ". " + df['abstract'].astype("str") + "
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
 ####################### Drop columns of labels that do not perform well #######################
-df = df.drop(columns=['climate_threat.Acidification', 'climate_threat.General_CC', 'climate_threat.Other'])
+df = df.drop(columns=['climate_threat.Acidification', 'climate_threat.Other']) # 'climate_threat.General_CC', 
 
 
 seen_index = df[df['seen']==1].index
@@ -73,6 +73,8 @@ unseen_index = df[df['seen']==0].index
 print("Dataset has been re-formatted and is ready")
 
 ################ Start defining functions ############################
+tf.config.threading.set_intra_op_parallelism_threads(n_threads)
+tf.config.threading.set_inter_op_parallelism_threads(n_threads)
 
 MODEL_NAME = 'distilbert-base-uncased'
 

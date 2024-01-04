@@ -17,26 +17,24 @@ import tensorflow_addons as tfa
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
 import itertools
-import time
 
-t0 = time.time()
 
 
 ################# Change INPUTS ##################
+n_threads = 3 # number of threads to parallelize on
+
 binVar = "societal_implemented" # name of binary variable
 binVarFull = "oro_development_stage.Implemented_continued_assessment"
 dockerFilePath = '/home/devi/analysis/'
 
 codedVariablesTxt = dockerFilePath + 'data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = dockerFilePath + 'data/seen/all-screen-results_screenExcl-codeIncl.txt'
-n_threads = 3 # number of threads to parallelize on
 conditionVar = 'oro_branch'
 conditionVarVal = 'oro_branch.Societal'
 
 ############################# Load data ###############################
 ######################## Change file paths x2 #########################
 df = pd.read_csv(codedVariablesTxt, delimiter='\t') #File path 1
-
 df = df.rename(columns={'analysis_id':'id'})
 
 screendf = pd.read_csv(screenDecisionsTxt, delimiter='\t') #File path 2
@@ -59,17 +57,7 @@ def map_values(x):
 
 df['random_sample']=df['sample_screen'].apply(map_values)
 
-######### PREDICT | CONDITIONAL VARIABLE == 1 #################
-############################ Choose subset (nested) ##########################
-df = df[df[conditionVarVal]==1].reset_index(drop=True)
-
-#################### Rename target column #################################
-df = df.rename(columns={binVarFull: binVar})
-
-
 df = (df
-      #.query('unlabelled==0')
-      # .query('relevant==1')
       .sort_values('id')
       .sample(frac=1, random_state=1)
       .reset_index(drop=True)
@@ -77,6 +65,26 @@ df = (df
 
 df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
 df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
+
+
+
+######### PREDICT | CONDITIONAL VARIABLE == 1 #################
+############################ Choose subset (nested) ##########################
+df = df[['id','text', conditionVarVal, binVarFull]]
+df = df[df[conditionVarVal]==1].reset_index(drop=True)
+
+#################### Rename target column #################################
+df = df.rename(columns={binVarFull: binVar})
+
+
+#df = (df
+#      .sort_values('id')
+#      .sample(frac=1, random_state=1)
+#      .reset_index(drop=True)
+#)
+
+#df['text'] = df['title'] + ". " + df['abstract'] + " " + "Keywords: " + df["keywords"]
+#df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.isna(row['text']) else row['text'], axis=1)
 
 print("The data has been re-formatted")
 print(df.shape)

@@ -14,8 +14,6 @@ import numpy as np
 from sklearn.model_selection import KFold
 from transformers import DistilBertTokenizer, TFDistilBertForSequenceClassification
 import tensorflow as tf
-tf.config.threading.set_intra_op_parallelism_threads(4)
-tf.config.threading.set_inter_op_parallelism_threads(4)
 import tensorflow_addons as tfa
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from sklearn.metrics import precision_score, recall_score
@@ -28,7 +26,7 @@ targetVar = "climate_threat" # name of variable
 suffix = 'simplified'
 codedVariablesTxt = '/home/devi/analysis/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/devi/analysis/data/seen/all-screen-results_screenExcl-codeIncl.txt'
-#n_threads = 2 # number of threads to parallelize on
+n_threads = 8 # number of threads to parallelize on
 
 
 
@@ -77,13 +75,15 @@ df['text'] = df.apply(lambda row: (row['title'] + ". " + row['abstract']) if pd.
 
 
 ####################### Drop columns of labels that do not perform well #######################
-df = df.drop(columns=['climate_threat.Acidification', 'climate_threat.General_CC', 'climate_threat.Other'])
+df = df.drop(columns=['climate_threat.Acidification', 'climate_threat.Other']) #'climate_threat.General_CC', 
 
 
 print("The data has been re-formatted")
 print(df.shape)
 
 ######################### Define functions #############################
+tf.config.threading.set_intra_op_parallelism_threads(n_threads)
+tf.config.threading.set_inter_op_parallelism_threads(n_threads)
 
 with open('/home/devi/analysis/pyFunctions/multi-label_0_model-selection_functions.py') as f:
     exec(f.read())

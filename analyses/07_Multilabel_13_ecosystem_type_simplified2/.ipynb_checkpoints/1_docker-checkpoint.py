@@ -6,6 +6,7 @@ num_procs = comm.Get_size()
 rank = comm.Get_rank()
 
 rank_i = rank%5
+print('Hello from processor {} of {}'.format(rank_i,num_procs))
 
 import pandas as pd
 import numpy as np
@@ -13,17 +14,16 @@ from sklearn.model_selection import KFold
 import ast
 from transformers import DistilBertTokenizer, TFDistilBertForSequenceClassification
 import tensorflow as tf
-tf.config.threading.set_intra_op_parallelism_threads(2)
-tf.config.threading.set_inter_op_parallelism_threads(2)
 import tensorflow_addons as tfa
 
 
 
 
 ################# Change INPUTS ##################
+n_threads = 6 # number of threads to parallelize on
+
 targetVar = "ecosystem_type" # name of variable
 suffix = 'simplified2'
-
 codedVariablesTxt = '/home/devi/analysis/data/seen/all-coding-format-distilBERT-simplifiedMore.txt'
 screenDecisionsTxt = '/home/devi/analysis/data/seen/all-screen-results_screenExcl-codeIncl.txt'
 unseenTxt = '/home/devi/analysis/data/unseen/0_unique_references.txt' # change to unique_references2.txt?
@@ -74,6 +74,8 @@ unseen_index = df[df['seen']==0].index
 print("Dataset has been re-formatted and is ready")
 
 ################ Start defining functions ############################
+tf.config.threading.set_intra_op_parallelism_threads(n_threads)
+tf.config.threading.set_inter_op_parallelism_threads(n_threads)
 
 MODEL_NAME = 'distilbert-base-uncased'
 

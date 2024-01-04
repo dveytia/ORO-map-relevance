@@ -1,5 +1,6 @@
 analyses/07_Binary_08_climate_mitigation/2_cv/*
 figures/*
 outputs/*
+outputs-docker/*
 data/*
 analyses/07_Binary_08_climate_mitigation/.ipynb_checkpoints/*
