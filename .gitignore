@@ -4,3 +4,4 @@ outputs/*
 outputs-docker/*
 data/*
 analyses/07_Binary_08_climate_mitigation/.ipynb_checkpoints/*
+analyses/distilbert_ORO_screen/*
